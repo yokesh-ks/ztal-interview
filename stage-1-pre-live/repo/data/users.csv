@@ -1,0 +1,7 @@
+user_id,name,role_id,entity_id,manager_user_id
+U001,Priya Raman,ROLE_HEAD_RECRUITING,all,
+U002,Raj Malhotra,ROLE_ENGINEERING_MANAGER,engineering,U001
+U003,Anika Shah,ROLE_RECRUITER,engineering,U002
+U004,Neha Iyer,ROLE_RECRUITER,engineering,U002
+U005,Omar Khan,ROLE_SALES_MANAGER,sales,U001
+U006,Sara Ali,ROLE_RECRUITER,sales,U005

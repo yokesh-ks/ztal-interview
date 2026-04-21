@@ -1,0 +1,10 @@
+candidate_id,job_id,name,email,stage,status,assigned_user_id,last_activity_date,expected_salary
+C1001,J1001,Alice Chen,alice.chen@example.com,screening,in_progress,U003,2026-03-10,2800000
+C1002,J1001,Ben Thomas,ben.thomas@example.com,technical_interview,passed,U004,2026-03-28,3400000
+C1003,J1001,Carla Gomez,carla.gomez@example.com,offer,offer_extended,U003,2026-03-30,3800000
+C1004,J1002,Deepa Nair,deepa.nair@example.com,screening,waiting_for_recruiter,U004,2026-03-14,2400000
+C1005,J1002,Ethan Ross,ethan.ross@example.com,onsite,passed,U004,2026-03-29,3000000
+C1006,J1003,Farah Ali,farah.ali@example.com,applied,new,U002,2026-03-27,1800000
+C2001,J2001,George Mills,george.mills@example.com,screening,in_progress,U006,2026-03-18,2200000
+C2002,J2001,Hana Patel,hana.patel@example.com,final_interview,scheduled,U006,2026-03-31,2600000
+C2003,J2002,Ivan Lee,ivan.lee@example.com,hired,joined,U005,2026-02-20,2100000

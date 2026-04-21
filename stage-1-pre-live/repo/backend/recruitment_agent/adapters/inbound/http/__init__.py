@@ -1,0 +1,2 @@
+"""HTTP inbound adapters."""
+

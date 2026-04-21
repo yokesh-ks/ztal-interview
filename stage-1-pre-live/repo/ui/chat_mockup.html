@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RBAC Recruiting Agent Mockup</title>
+    <style>
+      :root {
+        --bg: #f4f1ea;
+        --panel: #fffdf8;
+        --panel-strong: #f7efe2;
+        --text: #1f2430;
+        --muted: #6f7682;
+        --border: #d8cfc1;
+        --accent: #14532d;
+        --accent-soft: #e7f5ea;
+        --user: #e8f0ff;
+        --assistant: #f4efe7;
+        --shadow: 0 16px 40px rgba(31, 36, 48, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(20, 83, 45, 0.08), transparent 28%),
+          linear-gradient(180deg, #f8f5ef 0%, var(--bg) 100%);
+        min-height: 100vh;
+        padding: 32px 20px;
+      }
+
+      .shell {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+
+      .hint,
+      .meta {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      select,
+      button {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        font: inherit;
+      }
+
+      select {
+        background: #fff;
+        padding: 12px 14px;
+        color: var(--text);
+      }
+
+      button {
+        margin-top: 14px;
+        padding: 13px 16px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .chat {
+        display: flex;
+        flex-direction: column;
+        min-height: 720px;
+      }
+
+      .chat-header {
+        padding: 22px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .chat-header h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .status {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .messages {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        flex: 1;
+        overflow: auto;
+      }
+
+      .bubble {
+        max-width: 78%;
+        padding: 16px 18px;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+      }
+
+      .bubble.user {
+        align-self: flex-end;
+        background: var(--user);
+      }
+
+      .bubble.assistant {
+        align-self: flex-start;
+        background: var(--assistant);
+      }
+
+      .bubble .speaker {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+
+      .bubble p {
+        margin: 0;
+        line-height: 1.55;
+      }
+
+      .chat-footer {
+        border-top: 1px solid var(--border);
+        padding: 18px 24px 24px;
+        background: linear-gradient(180deg, rgba(255, 253, 248, 0.4), #fffdf8);
+      }
+
+      .composer {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .composer input {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        padding: 14px 16px;
+        font: inherit;
+      }
+
+      .requester-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      @media (max-width: 860px) {
+        .chat {
+          min-height: 620px;
+        }
+
+        .bubble {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <main class="card chat">
+        <div class="chat-header">
+          <div>
+            <p class="eyebrow">Chat</p>
+            <h2>Recruiting Assistant</h2>
+          </div>
+          <div class="status" id="status">Requester: U003</div>
+        </div>
+
+        <div class="messages" id="messages">
+          <div class="bubble assistant">
+            <div class="speaker">Assistant</div>
+            <p>
+              Hello! I can answer recruiting questions using the selected
+              requester’s access scope.
+            </p>
+          </div>
+          <div class="bubble user">
+            <div class="speaker">U003</div>
+            <p>Show candidates for J1001</p>
+          </div>
+          <div class="bubble assistant">
+            <div class="speaker">Assistant</div>
+            <p>
+              For requester U003, visible candidates for J1001 are Alice Chen
+              and Carla Gomez. Ben Thomas is assigned to another recruiter and
+              should not be returned for this requester.
+            </p>
+          </div>
+        </div>
+
+        <div class="chat-footer">
+          <p class="hint">
+            Suggested examples: “hi”, “List my open jobs”, “Show candidates for
+            J1001”, “Which of my open jobs have candidates stuck in screening
+            for more than 7 days?”
+          </p>
+          <div class="composer">
+            <input
+              id="messageInput"
+              type="text"
+              value="Which of my open jobs have candidates stuck in screening for more than 7 days?"
+            />
+            <button id="sendButton" type="button">Send</button>
+            <div class="requester-row">
+              <label for="requester">Requester</label>
+              <select id="requester">
+                <option value="U001">U001 - Priya Raman (Head Recruiting)</option>
+                <option value="U002">U002 - Raj Malhotra (Engineering Manager)</option>
+                <option value="U003" selected>U003 - Anika Shah (Recruiter)</option>
+                <option value="U004">U004 - Neha Iyer (Recruiter)</option>
+                <option value="U005">U005 - Omar Khan (Sales Manager)</option>
+                <option value="U006">U006 - Sara Ali (Recruiter)</option>
+              </select>
+            </div>
+          </div>
+          <p class="meta">
+            This file is a static mockup. It appends local messages for demo
+            purposes and is not connected to a backend.
+          </p>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const requester = document.getElementById("requester");
+      const status = document.getElementById("status");
+      const messages = document.getElementById("messages");
+      const sendButton = document.getElementById("sendButton");
+      const messageInput = document.getElementById("messageInput");
+
+      requester.addEventListener("change", () => {
+        const selected = requester.value;
+        status.textContent = `Requester: ${selected}`;
+      });
+
+      sendButton.addEventListener("click", () => {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        const userBubble = document.createElement("div");
+        userBubble.className = "bubble user";
+        userBubble.innerHTML = `
+          <div class="speaker">${requester.value}</div>
+          <p>${message}</p>
+        `;
+        messages.appendChild(userBubble);
+
+        const assistantBubble = document.createElement("div");
+        assistantBubble.className = "bubble assistant";
+        assistantBubble.innerHTML = `
+          <div class="speaker">Assistant</div>
+          <p>Placeholder response. In the real submission, this would come from the candidate's RBAC-aware agent.</p>
+        `;
+        messages.appendChild(assistantBubble);
+
+        messages.scrollTop = messages.scrollHeight;
+        messageInput.value = "";
+      });
+    </script>
+  </body>
+</html>

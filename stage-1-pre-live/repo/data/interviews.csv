@@ -1,0 +1,6 @@
+interview_id,candidate_id,job_id,interview_type,scheduled_at,outcome,interviewer,status
+I1001,C1002,J1001,technical,2026-03-27T10:00:00,pass,Arjun Singh,completed
+I1002,C1003,J1001,final,2026-03-29T15:00:00,strong_yes,Maya Rao,completed
+I1003,C1005,J1002,onsite,2026-03-28T13:00:00,pass,Rhea Menon,completed
+I1004,C2002,J2001,final,2026-04-03T11:00:00,,Marcus Bell,scheduled
+I1005,C2003,J2002,final,2026-02-15T16:00:00,pass,Lina George,completed

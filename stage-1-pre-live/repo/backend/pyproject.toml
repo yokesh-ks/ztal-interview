@@ -1,0 +1,13 @@
+[project]
+name = "recruitment-agent-assignment"
+version = "0.1.0"
+description = "Mini backend for the RBAC recruiting agent assignment"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

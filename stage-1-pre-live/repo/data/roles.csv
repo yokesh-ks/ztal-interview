@@ -1,0 +1,5 @@
+role_id,role_name,visibility_scope,entity_scope,can_view_jobs,can_view_candidates,can_view_interviews,can_view_compensation
+ROLE_HEAD_RECRUITING,Head Recruiting,org,all,true,true,true,true
+ROLE_ENGINEERING_MANAGER,Engineering Manager,subtree,assigned_entity,true,true,true,false
+ROLE_RECRUITER,Recruiter,self,assigned_entity,true,true,true,true
+ROLE_SALES_MANAGER,Sales Manager,subtree,assigned_entity,true,true,true,false
