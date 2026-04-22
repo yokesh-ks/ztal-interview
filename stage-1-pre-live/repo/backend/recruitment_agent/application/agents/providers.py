@@ -27,6 +27,8 @@ class PydanticAIProvider:
             return self._classify_with_google(message, system_prompt)
         if self._config.model_provider == "openai":
             return self._classify_with_model_identifier(message, system_prompt)
+        if self._config.model_provider == "deepseek":
+            return self._classify_with_deepseek(message, system_prompt)
 
         logger.error("Unsupported provider: %s", self._config.model_provider)
         return None
@@ -80,6 +82,36 @@ class PydanticAIProvider:
             return self._extract_result_data(result)
         except Exception as exc:
             logger.error("AI classification failed: %s", exc)
+            return None
+
+    def _classify_with_deepseek(self, message: str, system_prompt: str) -> dict[str, Any] | None:
+        api_key = self._config.api_key or os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            logger.warning("DeepSeek API key not configured.")
+            return None
+
+        base_url = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1")
+
+        try:
+            from pydantic_ai import Agent
+            from pydantic_ai.models.openai import OpenAIChatModel
+            from pydantic_ai.providers.openai import OpenAIProvider
+        except Exception as exc:
+            logger.error("Failed to import PydanticAI OpenAI modules: %s", exc)
+            return None
+
+        try:
+            provider = OpenAIProvider(base_url=base_url, api_key=api_key)
+            model = OpenAIChatModel(self._config.model_name, provider=provider)
+            classifier = Agent(
+                model,
+                output_type=dict,
+                instructions=system_prompt,
+            )
+            result = classifier.run_sync(message)
+            return self._extract_result_data(result)
+        except Exception as exc:
+            logger.error("DeepSeek classification failed: %s", exc)
             return None
 
     @staticmethod

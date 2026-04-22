@@ -25,4 +25,6 @@ class RecruitingAgentConfig:
             return f"google-gla:{self.model_name}"
         if self.model_provider == "openai":
             return f"openai:{self.model_name}"
+        if self.model_provider == "deepseek":
+            return f"deepseek:{self.model_name}"
         return self.model_name
