@@ -23,6 +23,7 @@ export function ChatExperience({ endpoint }: ChatExperienceProps) {
   return (
     <ChatDependenciesProvider endpoint={endpoint}>
       <ChatExperienceContent
+        key={requesterId}
         requesterId={requesterId}
         setRequesterId={setRequesterId}
       />
