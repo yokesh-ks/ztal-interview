@@ -42,9 +42,6 @@ def can_view_job(requester: RequesterContext, job: Job, visible_user_ids: set[st
         return False
     if not is_entity_visible(requester, job.entity_id):
         return False
-    if requester.role.visibility_scope == "subtree":
-        subtree_only_user_ids = visible_user_ids - {requester.user.user_id}
-        return any(user_id in subtree_only_user_ids for user_id in job.assigned_user_ids)
     return any(user_id in visible_user_ids for user_id in job.assigned_user_ids)
 
 

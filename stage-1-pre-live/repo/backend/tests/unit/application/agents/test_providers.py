@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+import types
+from unittest.mock import patch
+
+from recruitment_agent.application.agents.config import RecruitingAgentConfig
+from recruitment_agent.application.agents.providers import PydanticAIProvider, create_ai_provider
+
+
+def test_create_ai_provider_returns_pydantic_provider() -> None:
+    config = RecruitingAgentConfig(
+        model_provider="google",
+        model_name="gemini-1.5-flash",
+        api_key="test-key",
+        temperature=0.1,
+    )
+
+    provider = create_ai_provider(config)
+
+    assert isinstance(provider, PydanticAIProvider)
+
+
+def test_google_provider_returns_none_without_api_key() -> None:
+    config = RecruitingAgentConfig(
+        model_provider="google",
+        model_name="gemini-1.5-flash",
+        api_key=None,
+        temperature=0.1,
+    )
+    provider = PydanticAIProvider(config)
+
+    with patch("os.getenv", return_value=None):
+        result = provider.classify_intent("List my open jobs", "Classify intent")
+
+    assert result is None
+
+
+def test_google_provider_returns_intent_dict_with_valid_config() -> None:
+    config = RecruitingAgentConfig(
+        model_provider="google",
+        model_name="gemini-1.5-flash",
+        api_key="test-key",
+        temperature=0.1,
+    )
+    provider = PydanticAIProvider(config)
+
+    class FakeGoogleProvider:
+        def __init__(self, *, api_key: str) -> None:
+            self.api_key = api_key
+
+    class FakeGoogleModel:
+        def __init__(self, model_name: str, *, provider: FakeGoogleProvider) -> None:
+            self.model_name = model_name
+            self.provider = provider
+
+    class FakeAgent:
+        def __init__(self, model: object, **kwargs: object) -> None:
+            self.model = model
+            self.kwargs = kwargs
+
+        def run_sync(self, message: str) -> object:
+            return types.SimpleNamespace(output={"intent": "list_open_jobs"})
+
+    fake_pydantic_ai = types.ModuleType("pydantic_ai")
+    fake_pydantic_ai.Agent = FakeAgent
+    fake_models_google = types.ModuleType("pydantic_ai.models.google")
+    fake_models_google.GoogleModel = FakeGoogleModel
+    fake_providers_google = types.ModuleType("pydantic_ai.providers.google")
+    fake_providers_google.GoogleProvider = FakeGoogleProvider
+
+    with patch.dict(
+        "sys.modules",
+        {
+            "pydantic_ai": fake_pydantic_ai,
+            "pydantic_ai.models.google": fake_models_google,
+            "pydantic_ai.providers.google": fake_providers_google,
+        },
+    ):
+        result = provider.classify_intent("List my open jobs", "Classify intent")
+
+    assert result is not None
+    assert result["intent"] == "list_open_jobs"
+
+
+def test_provider_returns_none_for_unsupported_provider() -> None:
+    config = RecruitingAgentConfig(
+        model_provider="anthropic",
+        model_name="claude-sonnet",
+        api_key="test-key",
+        temperature=0.1,
+    )
+    provider = PydanticAIProvider(config)
+
+    result = provider.classify_intent("List my open jobs", "Classify intent")
+
+    assert result is None

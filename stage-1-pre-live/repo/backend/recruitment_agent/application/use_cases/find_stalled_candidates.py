@@ -4,6 +4,7 @@ from datetime import date
 
 from recruitment_agent.domain.models import Candidate, CandidateAlert, RequesterContext
 from recruitment_agent.domain.ports import CandidateRepositoryPort
+from recruitment_agent.domain.services.rbac_rules import redact_compensation
 from recruitment_agent.application.use_cases.list_visible_jobs import ListVisibleJobsUseCase
 
 
@@ -49,7 +50,7 @@ class FindStalledCandidatesUseCase:
                     job_title=job.title,
                     stage=candidate.stage,
                     days_stuck=(effective_today - candidate.last_activity_date).days,
-                    compensation=f"INR {candidate.expected_salary:,}",
+                    compensation=redact_compensation(requester, candidate.expected_salary),
                 )
             )
         return alerts

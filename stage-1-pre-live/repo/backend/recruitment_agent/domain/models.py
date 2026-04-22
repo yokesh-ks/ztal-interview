@@ -79,3 +79,12 @@ class CandidateAlert:
     days_stuck: int
     compensation: str | None
 
+
+@dataclass(frozen=True)
+class CandidateSummary:
+    total_jobs: int
+    total_candidates: int
+    stage_counts: dict[str, int]
+    interviews_scheduled: int
+    interviews_completed: int
+

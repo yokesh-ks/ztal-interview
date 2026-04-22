@@ -5,6 +5,8 @@ description = "Mini backend for the RBAC recruiting agent assignment"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115.0",
+  "pydantic-ai-slim[google]>=0.0.22",
+  "python-dotenv>=1.0.1",
   "uvicorn>=0.30.0"
 ]
 
