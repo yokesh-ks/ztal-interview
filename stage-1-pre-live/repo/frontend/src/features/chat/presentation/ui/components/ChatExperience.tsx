@@ -39,7 +39,7 @@ function ChatExperienceContent({
   requesterId,
   setRequesterId
 }: ChatExperienceContentProps) {
-  const { messages, isLoading, sendMessage } = useChat();
+  const { messages, isLoading, sendMessage } = useChat(requesterId);
 
   return (
     <section>

@@ -2,11 +2,16 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatExperience } from "../../../src/features/chat/presentation/ui/components/ChatExperience";
 
 describe("ChatExperience", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
   it("renders the requester selector", () => {
     vi.stubGlobal(
       "fetch",
@@ -77,5 +82,52 @@ describe("ChatExperience", () => {
     // Assert only U002's message is shown
     expect(screen.getByText("Jobs for Raj: J2001")).toBeInTheDocument();
     expect(screen.queryByText("Jobs for Priya: J1001")).not.toBeInTheDocument();
+  });
+
+  it("loads requester-specific history from sessionStorage when requester changes", async () => {
+    const user = userEvent.setup();
+
+    sessionStorage.setItem(
+      "recruiting-chat:last-reply:U001",
+      JSON.stringify([
+        {
+          requestId: "req-u001",
+          answer: "Priya history",
+          containsCompensation: false
+        }
+      ])
+    );
+    sessionStorage.setItem(
+      "recruiting-chat:last-reply:U002",
+      JSON.stringify([
+        {
+          requestId: "req-u002",
+          answer: "Raj history",
+          containsCompensation: false
+        }
+      ])
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          requestId: "req-1",
+          answer: "Visible open jobs: J1001",
+          containsCompensation: false
+        })
+      })
+    );
+
+    render(<ChatExperience endpoint="http://127.0.0.1:8000/api/chat/reply" />);
+
+    expect(screen.getByText("Raj history")).toBeInTheDocument();
+    expect(screen.queryByText("Priya history")).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Requester"), "U001");
+
+    expect(screen.getByText("Priya history")).toBeInTheDocument();
+    expect(screen.queryByText("Raj history")).not.toBeInTheDocument();
   });
 });
