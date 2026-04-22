@@ -8,7 +8,6 @@ import { ChatExperience } from "../../../src/features/chat/presentation/ui/compo
 
 describe("ChatExperience", () => {
   beforeEach(() => {
-    sessionStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -31,7 +30,7 @@ describe("ChatExperience", () => {
     expect(screen.getByRole("button", { name: "Query visible jobs" })).toBeInTheDocument();
   });
 
-  it("reproduces bug where messages persist across requesters", async () => {
+  it("messages are isolated per requester", async () => {
     const user = userEvent.setup();
 
     const mockFetch = vi.fn(async (url, options) => {
@@ -71,7 +70,7 @@ describe("ChatExperience", () => {
     // Switch to U002
     await user.selectOptions(screen.getByLabelText("Requester"), "U002");
 
-    // Assert previous messages are not visible (this should fail due to bug)
+    // Assert previous messages are not visible when requester changes
     expect(screen.queryByText("Jobs for Priya: J1001")).not.toBeInTheDocument();
 
     // Send message as U002
@@ -84,50 +83,41 @@ describe("ChatExperience", () => {
     expect(screen.queryByText("Jobs for Priya: J1001")).not.toBeInTheDocument();
   });
 
-  it("loads requester-specific history from sessionStorage when requester changes", async () => {
+  it("messages start empty for each requester", async () => {
     const user = userEvent.setup();
-
-    sessionStorage.setItem(
-      "recruiting-chat:last-reply:U001",
-      JSON.stringify([
-        {
-          requestId: "req-u001",
-          answer: "Priya history",
-          containsCompensation: false
-        }
-      ])
-    );
-    sessionStorage.setItem(
-      "recruiting-chat:last-reply:U002",
-      JSON.stringify([
-        {
-          requestId: "req-u002",
-          answer: "Raj history",
-          containsCompensation: false
-        }
-      ])
-    );
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
+    const mockFetch = vi.fn(async (url, options) => {
+      const body = JSON.parse(options.body);
+      if (body.requester_id === "U001") {
+        return {
+          ok: true,
+          json: async () => ({
+            requestId: "req-u001",
+            answer: "Jobs for Priya: J1001",
+            containsCompensation: false
+          })
+        };
+      }
+      return {
         ok: true,
         json: async () => ({
-          requestId: "req-1",
-          answer: "Visible open jobs: J1001",
+          requestId: "req-u002",
+          answer: "Jobs for Raj: J2001",
           containsCompensation: false
         })
-      })
-    );
+      };
+    });
+
+    vi.stubGlobal("fetch", mockFetch);
 
     render(<ChatExperience endpoint="http://127.0.0.1:8000/api/chat/reply" />);
 
-    expect(screen.getByText("Raj history")).toBeInTheDocument();
-    expect(screen.queryByText("Priya history")).not.toBeInTheDocument();
-
     await user.selectOptions(screen.getByLabelText("Requester"), "U001");
+    await user.click(screen.getByRole("button", { name: "Query visible jobs" }));
+    await screen.findByText("Jobs for Priya: J1001");
 
-    expect(screen.getByText("Priya history")).toBeInTheDocument();
-    expect(screen.queryByText("Raj history")).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Requester"), "U002");
+
+    expect(screen.queryByText("Jobs for Priya: J1001")).not.toBeInTheDocument();
+    expect(screen.queryByText("Jobs for Raj: J2001")).not.toBeInTheDocument();
   });
 });
