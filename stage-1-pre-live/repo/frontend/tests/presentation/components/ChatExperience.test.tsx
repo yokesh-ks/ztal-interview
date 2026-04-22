@@ -1,7 +1,9 @@
+/// <reference types="@testing-library/jest-dom" />
+
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ChatExperience } from "../../../../src/features/chat/presentation/ui/components/ChatExperience";
+import { ChatExperience } from "../../../src/features/chat/presentation/ui/components/ChatExperience";
 
 describe("ChatExperience", () => {
   it("renders the requester selector", () => {
@@ -20,6 +22,6 @@ describe("ChatExperience", () => {
     render(<ChatExperience endpoint="http://127.0.0.1:8000/api/chat/reply" />);
 
     expect(screen.getByLabelText("Requester")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ask" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Query visible jobs" })).toBeInTheDocument();
   });
 });
