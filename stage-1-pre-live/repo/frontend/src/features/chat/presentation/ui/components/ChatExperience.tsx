@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { CHAT_REQUESTERS, DEFAULT_CHAT_REQUESTER_ID, CHAT_VISIBLE_JOBS_QUERY } from "../../constants/chatExperience";
 import { useChat } from "../../hooks/useChat";
 import { ChatWindow } from "./ChatWindow";
 import { ChatDependenciesProvider } from "@/shared/di";
@@ -8,17 +9,8 @@ type ChatExperienceProps = {
   endpoint: string;
 };
 
-const REQUESTERS = [
-  { id: "U001", label: "Priya Raman" },
-  { id: "U002", label: "Raj Malhotra" },
-  { id: "U003", label: "Anika Shah" },
-  { id: "U004", label: "Neha Iyer" },
-  { id: "U005", label: "Omar Khan" },
-  { id: "U006", label: "Sara Ali" }
-];
-
 export function ChatExperience({ endpoint }: ChatExperienceProps) {
-  const [requesterId, setRequesterId] = useState("U002");
+  const [requesterId, setRequesterId] = useState(DEFAULT_CHAT_REQUESTER_ID);
 
   return (
     <ChatDependenciesProvider endpoint={endpoint}>
@@ -40,7 +32,7 @@ function ChatExperienceContent({
   requesterId,
   setRequesterId
 }: ChatExperienceContentProps) {
-  const { messages, isLoading, sendMessage } = useChat(requesterId);
+  const { messages, isLoading, submitChatQuery } = useChat(requesterId);
 
   return (
     <section>
@@ -50,14 +42,14 @@ function ChatExperienceContent({
         value={requesterId}
         onChange={(event) => setRequesterId(event.target.value)}
       >
-        {REQUESTERS.map((requester) => (
+        {CHAT_REQUESTERS.map((requester) => (
           <option key={requester.id} value={requester.id}>
             {requester.label}
           </option>
         ))}
       </select>
 
-      <button type="button" onClick={() => void sendMessage(requesterId, "List my open jobs")}>
+      <button type="button" onClick={() => void submitChatQuery(CHAT_VISIBLE_JOBS_QUERY)}>
         Query visible jobs
       </button>
 

@@ -8,4 +8,3 @@ export type ChatReply = {
   answer: string;
   containsCompensation: boolean;
 };
-

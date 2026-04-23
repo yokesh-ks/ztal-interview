@@ -1,5 +1,5 @@
-import type { ChatReply } from "../../domain/models/ChatModels";
-import type { ChatMessageUi } from "../models/ChatMessageUi";
+import type { ChatReply } from "../../domain/types/model/ChatModels";
+import type { ChatMessageUi } from "../types/ui/ChatMessageUi";
 
 export function toChatMessageUi(reply: ChatReply): ChatMessageUi {
   return {

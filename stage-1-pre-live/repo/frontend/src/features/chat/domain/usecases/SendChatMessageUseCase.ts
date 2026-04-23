@@ -1,4 +1,4 @@
-import type { ChatReply, ChatRequest } from "../models/ChatModels";
+import type { ChatReply, ChatRequest } from "../types/model/ChatModels";
 import type { RecruitingChatRepository } from "../ports/RecruitingChatRepository";
 
 export class SendChatMessageUseCase {

@@ -3,4 +3,3 @@ export type ChatMessageUi = {
   body: string;
   badges: string[];
 };
-

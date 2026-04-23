@@ -1,4 +1,4 @@
-import type { ChatReply, ChatRequest } from "../../domain/models/ChatModels";
+import type { ChatReply, ChatRequest } from "../../domain/types/model/ChatModels";
 import type { RecruitingChatRepository } from "../../domain/ports/RecruitingChatRepository";
 
 export class HttpRecruitingChatRepository implements RecruitingChatRepository {

@@ -1,7 +1,7 @@
-import type { ChatReply } from "../../../domain/models/ChatModels";
+import type { ChatMessageUi } from "../../types/ui/ChatMessageUi";
 
 type ChatWindowProps = {
-  messages: ChatReply[];
+  messages: ChatMessageUi[];
   isLoading: boolean;
 };
 
@@ -12,9 +12,15 @@ export function ChatWindow({ messages, isLoading }: ChatWindowProps) {
       {isLoading ? <p>Thinking...</p> : null}
       <ul>
         {messages.map((message) => (
-          <li key={message.requestId}>
-            <p>{message.answer}</p>
-            {message.containsCompensation ? <span>Compensation</span> : null}
+          <li key={message.id}>
+            <p>{message.body}</p>
+            {message.badges.length > 0 ? (
+              <ul>
+                {message.badges.map((badge) => (
+                  <li key={badge}>{badge}</li>
+                ))}
+              </ul>
+            ) : null}
           </li>
         ))}
       </ul>
