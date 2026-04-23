@@ -57,6 +57,23 @@ def test_can_view_job_requires_entity_and_assignee_visibility() -> None:
     assert can_view_job(requester, job, {"U002"}) is False
 
 
+def test_can_view_job_subtree_includes_requester_owned_jobs() -> None:
+    requester = _build_requester("subtree", "assigned_entity")
+    job = Job(
+        job_id="J1003",
+        title="Data Analyst",
+        department="Operations",
+        entity_id="engineering",
+        status="open",
+        assigned_user_ids=("U002",),
+        hiring_manager="Nidhi",
+        created_at=__import__("datetime").date(2026, 2, 15),
+        priority="low",
+    )
+
+    assert can_view_job(requester, job, {"U003", "U004"}) is True
+
+
 def test_redact_compensation_returns_none_without_permission() -> None:
     requester = _build_requester("self", "assigned_entity")
 
