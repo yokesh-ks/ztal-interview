@@ -1,19 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 
 from recruitment_agent.domain.models import Candidate, CandidateAlert, RequesterContext
 from recruitment_agent.domain.ports import CandidateRepositoryPort
+from recruitment_agent.domain.services.candidate_rules import is_stalled_candidate
 from recruitment_agent.domain.services.rbac_rules import redact_compensation
 from recruitment_agent.application.use_cases.list_visible_jobs import ListVisibleJobsUseCase
-
-
-def _is_stalled_candidate(candidate: Candidate, *, today: date, threshold_days: int) -> bool:
-    if candidate.stage != "screening":
-        return False
-    if candidate.status not in {"in_progress", "waiting_for_recruiter"}:
-        return False
-    return (today - candidate.last_activity_date).days > threshold_days
 
 
 class FindStalledCandidatesUseCase:
@@ -21,9 +15,13 @@ class FindStalledCandidatesUseCase:
         self,
         list_visible_jobs_use_case: ListVisibleJobsUseCase,
         candidate_repository: CandidateRepositoryPort,
+        stalled_candidate_rule: Callable[[Candidate, date, int], bool] = is_stalled_candidate,
+        compensation_redactor: Callable[[RequesterContext, int], str | None] = redact_compensation,
     ) -> None:
         self._list_visible_jobs_use_case = list_visible_jobs_use_case
         self._candidate_repository = candidate_repository
+        self._stalled_candidate_rule = stalled_candidate_rule
+        self._compensation_redactor = compensation_redactor
 
     def execute(
         self,
@@ -39,7 +37,7 @@ class FindStalledCandidatesUseCase:
 
         alerts: list[CandidateAlert] = []
         for candidate in candidates:
-            if not _is_stalled_candidate(candidate, today=effective_today, threshold_days=threshold_days):
+            if not self._stalled_candidate_rule(candidate, effective_today, threshold_days):
                 continue
             job = job_by_id[candidate.job_id]
             alerts.append(
@@ -50,7 +48,7 @@ class FindStalledCandidatesUseCase:
                     job_title=job.title,
                     stage=candidate.stage,
                     days_stuck=(effective_today - candidate.last_activity_date).days,
-                    compensation=redact_compensation(requester, candidate.expected_salary),
+                    compensation=self._compensation_redactor(requester, candidate.expected_salary),
                 )
             )
         return alerts

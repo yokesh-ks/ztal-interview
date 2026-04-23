@@ -68,3 +68,46 @@ def test_find_stalled_candidates_includes_compensation_for_authorized_requester(
 
     assert len(alerts) == 1
     assert alerts[0].compensation == "INR 2,800,000"
+
+
+def test_find_stalled_candidates_orchestrates_domain_services() -> None:
+    list_visible_jobs_use_case = Mock()
+    candidate_repository = Mock()
+    stalled_candidate_rule = Mock(side_effect=[True, False])
+    compensation_redactor = Mock(return_value="INR 2,800,000")
+
+    requester = RequesterContext(
+        user=User("U001", "Ashwin", "ROLE_HEAD", "all", None),
+        role=Role(
+            role_id="ROLE_HEAD",
+            role_name="Head of Talent",
+            visibility_scope="org",
+            entity_scope="all",
+            can_view_jobs=True,
+            can_view_candidates=True,
+            can_view_interviews=True,
+            can_view_compensation=True,
+        ),
+    )
+    list_visible_jobs_use_case.execute.return_value = [
+        Job("J1001", "Backend Engineer", "Engineering", "engineering", "open", ("U003",), "Ashwin", date(2026, 1, 10), "high"),
+    ]
+    candidate_repository.list_by_job_ids.return_value = [
+        Candidate("C1001", "J1001", "Alice Chen", "alice@example.com", "screening", "in_progress", "U003", date(2026, 3, 10), 2800000),
+        Candidate("C1002", "J1001", "Ben Thomas", "ben@example.com", "screening", "waiting_for_recruiter", "U004", date(2026, 3, 28), 3400000),
+    ]
+
+    use_case = FindStalledCandidatesUseCase(
+        list_visible_jobs_use_case,
+        candidate_repository,
+        stalled_candidate_rule=stalled_candidate_rule,
+        compensation_redactor=compensation_redactor,
+    )
+
+    alerts = use_case.execute(requester, threshold_days=7, today=date(2026, 4, 1))
+
+    assert len(alerts) == 1
+    stalled_candidate_rule.assert_any_call(candidate_repository.list_by_job_ids.return_value[0], date(2026, 4, 1), 7)
+    stalled_candidate_rule.assert_any_call(candidate_repository.list_by_job_ids.return_value[1], date(2026, 4, 1), 7)
+    assert stalled_candidate_rule.call_count == 2
+    compensation_redactor.assert_called_once_with(requester, 2800000)
