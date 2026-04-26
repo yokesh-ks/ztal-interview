@@ -17,7 +17,7 @@ def test_chat_agent_lists_open_jobs_for_requester() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["request_id"].startswith("U002-")
-    assert "Visible jobs:" in payload["answer"]
+    assert "J1001" in payload["answer"]
     assert payload["contains_compensation"] is False
 
 
@@ -34,5 +34,5 @@ def test_chat_agent_returns_compensation_for_authorized_requester() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert "Candidates for J1001:" in payload["answer"]
+    assert "J1001" in payload["answer"]
     assert payload["contains_compensation"] is True

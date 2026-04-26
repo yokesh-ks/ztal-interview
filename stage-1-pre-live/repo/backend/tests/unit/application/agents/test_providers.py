@@ -30,12 +30,12 @@ def test_google_provider_returns_none_without_api_key() -> None:
     provider = PydanticAIProvider(config)
 
     with patch("os.getenv", return_value=None):
-        result = provider.classify_intent("List my open jobs", "Classify intent")
+        result = provider.get_model()
 
     assert result is None
 
 
-def test_google_provider_returns_intent_dict_with_valid_config() -> None:
+def test_google_provider_returns_model_with_valid_config() -> None:
     config = RecruitingAgentConfig(
         model_provider="google",
         model_name="gemini-1.5-flash",
@@ -53,16 +53,6 @@ def test_google_provider_returns_intent_dict_with_valid_config() -> None:
             self.model_name = model_name
             self.provider = provider
 
-    class FakeAgent:
-        def __init__(self, model: object, **kwargs: object) -> None:
-            self.model = model
-            self.kwargs = kwargs
-
-        def run_sync(self, message: str) -> object:
-            return types.SimpleNamespace(output={"intent": "list_open_jobs"})
-
-    fake_pydantic_ai = types.ModuleType("pydantic_ai")
-    fake_pydantic_ai.Agent = FakeAgent
     fake_models_google = types.ModuleType("pydantic_ai.models.google")
     fake_models_google.GoogleModel = FakeGoogleModel
     fake_providers_google = types.ModuleType("pydantic_ai.providers.google")
@@ -71,15 +61,15 @@ def test_google_provider_returns_intent_dict_with_valid_config() -> None:
     with patch.dict(
         "sys.modules",
         {
-            "pydantic_ai": fake_pydantic_ai,
             "pydantic_ai.models.google": fake_models_google,
             "pydantic_ai.providers.google": fake_providers_google,
         },
     ):
-        result = provider.classify_intent("List my open jobs", "Classify intent")
+        result = provider.get_model()
 
     assert result is not None
-    assert result["intent"] == "list_open_jobs"
+    assert isinstance(result, FakeGoogleModel)
+    assert result.model_name == "gemini-1.5-flash"
 
 
 def test_provider_returns_none_for_unsupported_provider() -> None:
@@ -91,6 +81,6 @@ def test_provider_returns_none_for_unsupported_provider() -> None:
     )
     provider = PydanticAIProvider(config)
 
-    result = provider.classify_intent("List my open jobs", "Classify intent")
+    result = provider.get_model()
 
     assert result is None

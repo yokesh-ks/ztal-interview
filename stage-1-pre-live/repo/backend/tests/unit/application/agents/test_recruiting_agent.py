@@ -1,6 +1,8 @@
 from datetime import date
 from unittest.mock import Mock
 
+from pydantic_ai.models.test import TestModel
+
 from recruitment_agent.application.agents.recruiting_agent import RecruitingAgent
 from recruitment_agent.domain.models import Candidate, RequesterContext, Role, User
 
@@ -21,17 +23,26 @@ def _build_requester() -> RequesterContext:
     )
 
 
-def _build_agent() -> RecruitingAgent:
+def _build_agent(model: object | None = None) -> RecruitingAgent:
+    if model is None:
+        model = TestModel(call_tools=[])
+    mock_provider = Mock()
+    mock_provider.get_model.return_value = model
     return RecruitingAgent(
         list_visible_jobs_use_case=Mock(),
         list_candidates_for_job_use_case=Mock(),
         find_stalled_candidates_use_case=Mock(),
         summarize_candidates_use_case=Mock(),
+        ai_provider=mock_provider,
     )
 
 
 def test_recruiting_agent_handles_greeting() -> None:
-    agent = _build_agent()
+    model = TestModel(
+        call_tools=[],
+        custom_output_text="Hello! I can help with jobs, candidates, screening delays, and summaries.",
+    )
+    agent = _build_agent(model)
 
     response = agent.reply(_build_requester(), "hello")
 
@@ -40,7 +51,8 @@ def test_recruiting_agent_handles_greeting() -> None:
 
 
 def test_recruiting_agent_routes_candidate_query_with_rbac_redaction() -> None:
-    agent = _build_agent()
+    model = TestModel(call_tools=["list_candidates_for_job"])
+    agent = _build_agent(model)
     agent._list_candidates_for_job_use_case.execute.return_value = [
         Candidate(
             "C1001",
@@ -61,9 +73,10 @@ def test_recruiting_agent_routes_candidate_query_with_rbac_redaction() -> None:
     assert "C1001 Alice".lower() in response.answer.lower()
 
 
-def test_recruiting_agent_uses_provider_interface_for_intent_classification() -> None:
+def test_recruiting_agent_uses_provider_to_build_agent() -> None:
     mock_provider = Mock()
-    mock_provider.classify_intent.return_value = {"intent": "list_open_jobs"}
+    mock_provider.get_model.return_value = TestModel(call_tools=[])
+
     agent = RecruitingAgent(
         list_visible_jobs_use_case=Mock(),
         list_candidates_for_job_use_case=Mock(),
@@ -72,8 +85,5 @@ def test_recruiting_agent_uses_provider_interface_for_intent_classification() ->
         ai_provider=mock_provider,
     )
 
-    decision = agent._classify_intent_with_pydantic_ai("List my jobs")
-
-    assert decision is not None
-    assert decision.intent == "list_open_jobs"
-    mock_provider.classify_intent.assert_called_once()
+    mock_provider.get_model.assert_called_once()
+    assert agent._agent is not None

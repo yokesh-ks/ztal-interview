@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
-import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic_ai import Agent, RunContext
 
 from recruitment_agent.application.agents.config import RecruitingAgentConfig
 from recruitment_agent.application.agents.providers import AIProvider, create_ai_provider
@@ -22,11 +22,25 @@ from recruitment_agent.domain.models import RequesterContext
 
 logger = logging.getLogger(__name__)
 
-_INTENT_CLASSIFICATION_PROMPT = (
-    "Classify recruiting chat queries into one intent: greeting, list_open_jobs, "
-    "list_candidates_for_job, stalled_candidates, candidate_summary, or unsupported. "
-    "Extract job_id (like J1001) when present. Extract title_contains only when clearly asked."
+_AGENT_INSTRUCTIONS = (
+    "You are a recruiting assistant with access to job and candidate tools. "
+    "Use list_open_jobs for job listing queries. "
+    "Use list_candidates_for_job with the job ID (e.g. J1001) for candidate queries. "
+    "Use find_stalled_candidates for queries about stuck or stalled screening. "
+    "Use summarize_candidates for summary queries. "
+    "For greetings respond: 'Hello! I can help with jobs, candidates, screening delays, and summaries.' "
+    "For unrecognized queries explain what you can assist with."
 )
+
+
+@dataclass
+class _AgentDeps:
+    requester: RequesterContext
+    list_visible_jobs_use_case: ListVisibleJobsUseCase
+    list_candidates_for_job_use_case: ListCandidatesForJobUseCase
+    find_stalled_candidates_use_case: FindStalledCandidatesUseCase
+    summarize_candidates_use_case: SummarizeCandidatesUseCase
+    contains_compensation: bool = field(default=False)
 
 
 @dataclass(frozen=True)
@@ -35,11 +49,43 @@ class RecruitingAgentReply:
     contains_compensation: bool
 
 
-class _IntentDecision(BaseModel):
-    intent: str
-    job_id: str | None = None
-    title_contains: str | None = None
-    threshold_days: int = 7
+def _build_agent(model: Any) -> Agent[_AgentDeps, str]:
+    agent: Agent[_AgentDeps, str] = Agent(
+        model,
+        deps_type=_AgentDeps,
+        output_type=str,
+        instructions=_AGENT_INSTRUCTIONS,
+    )
+
+    @agent.tool
+    def list_open_jobs(ctx: RunContext[_AgentDeps]) -> str:
+        result = JobQueryTool(ctx.deps.requester, ctx.deps.list_visible_jobs_use_case).run(statuses={"open"})
+        return result.text
+
+    @agent.tool
+    def list_candidates_for_job(ctx: RunContext[_AgentDeps], job_id: str) -> str:
+        result = CandidateQueryTool(ctx.deps.requester, ctx.deps.list_candidates_for_job_use_case).run(job_id=job_id)
+        if result.contains_compensation:
+            ctx.deps.contains_compensation = True
+        return result.text
+
+    @agent.tool
+    def find_stalled_candidates(ctx: RunContext[_AgentDeps], threshold_days: int = 7) -> str:
+        result = StalledCandidatesTool(ctx.deps.requester, ctx.deps.find_stalled_candidates_use_case).run(
+            threshold_days=threshold_days
+        )
+        if result.contains_compensation:
+            ctx.deps.contains_compensation = True
+        return result.text
+
+    @agent.tool
+    def summarize_candidates(ctx: RunContext[_AgentDeps], title_contains: str | None = None) -> str:
+        result = CandidateSummaryTool(ctx.deps.requester, ctx.deps.summarize_candidates_use_case).run(
+            title_contains=title_contains
+        )
+        return result.text
+
+    return agent
 
 
 class RecruitingAgent:
@@ -59,6 +105,8 @@ class RecruitingAgent:
         self._summarize_candidates_use_case = summarize_candidates_use_case
         self._config = config or RecruitingAgentConfig.from_env()
         self._ai_provider = ai_provider or create_ai_provider(self._config)
+        model = self._ai_provider.get_model()
+        self._agent: Agent[_AgentDeps, str] | None = _build_agent(model) if model is not None else None
 
     def reply(self, requester: RequesterContext, message: str) -> RecruitingAgentReply:
         normalized_message = message.strip()
@@ -68,117 +116,35 @@ class RecruitingAgent:
                 contains_compensation=False,
             )
 
-        decision = self._classify_intent(normalized_message)
-        return self._execute_intent(requester, normalized_message, decision)
-
-    def _classify_intent(self, message: str) -> _IntentDecision:
-        model_decision = self._classify_intent_with_pydantic_ai(message)
-        if model_decision is not None:
-            return model_decision
-        return self._classify_intent_with_rules(message)
-
-    def _classify_intent_with_pydantic_ai(self, message: str) -> _IntentDecision | None:
-        result = self._ai_provider.classify_intent(message, _INTENT_CLASSIFICATION_PROMPT)
-        if result is None:
-            return None
-
-        try:
-            return _IntentDecision(**result)
-        except ValidationError as exc:
-            logger.warning("Invalid AI intent payload, falling back to rules: %s", exc)
-            return None
-
-    def _classify_intent_with_rules(self, message: str) -> _IntentDecision:
-        normalized = message.strip().lower()
-        if normalized in {"hi", "hello", "thanks", "thank you"}:
-            return _IntentDecision(intent="greeting")
-
-        if "stuck in screening" in normalized or "stalled" in normalized:
-            return _IntentDecision(intent="stalled_candidates")
-
-        if "summary" in normalized and "candidate" in normalized:
-            return _IntentDecision(
-                intent="candidate_summary",
-                title_contains=self._extract_title_filter(normalized),
-            )
-
-        job_id_match = re.search(r"\bJ\d{4}\b", message.upper())
-        if job_id_match and ("candidate" in normalized or "applicant" in normalized):
-            return _IntentDecision(intent="list_candidates_for_job", job_id=job_id_match.group(0))
-
-        if "open jobs" in normalized or "list my jobs" in normalized:
-            return _IntentDecision(intent="list_open_jobs")
-
-        return _IntentDecision(intent="unsupported")
-
-    def _execute_intent(
-        self,
-        requester: RequesterContext,
-        message: str,
-        decision: _IntentDecision,
-    ) -> RecruitingAgentReply:
-        if decision.intent == "greeting":
+        if self._agent is None:
             return RecruitingAgentReply(
-                answer="Hello! I can help with jobs, candidates, screening delays, and summaries.",
+                answer=(
+                    "I can help with open jobs, candidates for a job, stalled screening candidates, "
+                    "and candidate summaries."
+                ),
                 contains_compensation=False,
             )
 
-        if decision.intent == "list_open_jobs":
-            result = JobQueryTool(requester, self._list_visible_jobs_use_case).run(statuses={"open"})
-            return RecruitingAgentReply(
-                answer=result.text,
-                contains_compensation=result.contains_compensation,
-            )
-
-        if decision.intent == "list_candidates_for_job":
-            job_id = decision.job_id or self._extract_job_id(message)
-            if job_id is None:
-                return RecruitingAgentReply(
-                    answer="Please provide the job id (for example J1001) for candidate queries.",
-                    contains_compensation=False,
-                )
-            result = CandidateQueryTool(requester, self._list_candidates_for_job_use_case).run(job_id=job_id)
-            return RecruitingAgentReply(
-                answer=result.text,
-                contains_compensation=result.contains_compensation,
-            )
-
-        if decision.intent == "stalled_candidates":
-            result = StalledCandidatesTool(
-                requester,
-                self._find_stalled_candidates_use_case,
-            ).run(threshold_days=decision.threshold_days)
-            return RecruitingAgentReply(
-                answer=result.text,
-                contains_compensation=result.contains_compensation,
-            )
-
-        if decision.intent == "candidate_summary":
-            result = CandidateSummaryTool(requester, self._summarize_candidates_use_case).run(
-                title_contains=decision.title_contains
-            )
-            return RecruitingAgentReply(
-                answer=result.text,
-                contains_compensation=result.contains_compensation,
-            )
-
-        return RecruitingAgentReply(
-            answer=(
-                "I can help with open jobs, candidates for a job, stalled screening candidates, "
-                "and candidate summaries."
-            ),
-            contains_compensation=False,
+        deps = _AgentDeps(
+            requester=requester,
+            list_visible_jobs_use_case=self._list_visible_jobs_use_case,
+            list_candidates_for_job_use_case=self._list_candidates_for_job_use_case,
+            find_stalled_candidates_use_case=self._find_stalled_candidates_use_case,
+            summarize_candidates_use_case=self._summarize_candidates_use_case,
         )
 
-    @staticmethod
-    def _extract_job_id(message: str) -> str | None:
-        match = re.search(r"\bJ\d{4}\b", message.upper())
-        return match.group(0) if match else None
-
-    @staticmethod
-    def _extract_title_filter(message: str) -> str | None:
-        marker = "for "
-        if marker not in message:
-            return None
-        fragment = message.split(marker, maxsplit=1)[-1].strip()
-        return fragment or None
+        try:
+            result = self._agent.run_sync(normalized_message, deps=deps)
+            return RecruitingAgentReply(
+                answer=result.output,
+                contains_compensation=deps.contains_compensation,
+            )
+        except Exception as exc:
+            logger.error("Agent execution failed: %s", exc)
+            return RecruitingAgentReply(
+                answer=(
+                    "I can help with open jobs, candidates for a job, stalled screening candidates, "
+                    "and candidate summaries."
+                ),
+                contains_compensation=False,
+            )
