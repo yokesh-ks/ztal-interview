@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from pydantic_ai import Agent, RunContext
 
@@ -148,3 +149,12 @@ class RecruitingAgent:
                 ),
                 contains_compensation=False,
             )
+
+    async def reply_stream(
+        self, requester: RequesterContext, message: str
+    ) -> AsyncGenerator[str, None]:
+        # run_stream() + Google Gemini + sync tools has reliability issues with
+        # tool invocation in async mode.  run_sync() is the proven path, so we
+        # delegate to reply() via asyncio.to_thread() to keep the event loop free.
+        result = await asyncio.to_thread(self.reply, requester, message)
+        yield result.answer

@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from recruitment_agent.adapters.inbound.http.chat_routes import build_chat_router
+from recruitment_agent.adapters.inbound.http.copilotkit_routes import build_copilotkit_router
 from recruitment_agent.container import build_container
 
 
@@ -21,7 +22,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     data_dir = Path(__file__).resolve().parents[3] / "data"
-    app.include_router(build_chat_router(build_container(data_dir)))
+    container = build_container(data_dir)
+    app.include_router(build_chat_router(container))
+    app.include_router(build_copilotkit_router(container))
     return app
 
 

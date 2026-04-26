@@ -6,7 +6,9 @@
       "Bash(python -m pytest tests/unit/application/agents/ -v)",
       "Bash(python -m pytest tests/unit/ -v)",
       "Bash(python -m pytest tests/integration/ -v)",
-      "Bash(python -m pytest tests/ -v)"
+      "Bash(python -m pytest tests/ -v)",
+      "Read(//d/d/yokesh-3.0/ztal-interview/stage-1-pre-live/repo/frontend/**)",
+      "Read(//d/d/yokesh-3.0/ztal-interview/stage-1-pre-live/repo/backend/**)"
     ]
   }
 }

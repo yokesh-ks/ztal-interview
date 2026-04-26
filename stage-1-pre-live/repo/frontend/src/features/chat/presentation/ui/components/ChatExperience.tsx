@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotChat } from "@copilotkit/react-ui";
+import "@copilotkit/react-ui/styles.css";
 
-import { CHAT_REQUESTERS, DEFAULT_CHAT_REQUESTER_ID, CHAT_VISIBLE_JOBS_QUERY } from "../../constants/chatExperience";
-import { useChat } from "../../hooks/useChat";
-import { ChatWindow } from "./ChatWindow";
-import { ChatDependenciesProvider } from "@/shared/di";
+import { CHAT_REQUESTERS, DEFAULT_CHAT_REQUESTER_ID } from "../../constants/chatExperience";
 
 type ChatExperienceProps = {
   endpoint: string;
@@ -12,27 +12,14 @@ type ChatExperienceProps = {
 export function ChatExperience({ endpoint }: ChatExperienceProps) {
   const [requesterId, setRequesterId] = useState(DEFAULT_CHAT_REQUESTER_ID);
 
-  return (
-    <ChatDependenciesProvider endpoint={endpoint}>
-      <ChatExperienceContent
-        key={requesterId}
-        requesterId={requesterId}
-        setRequesterId={setRequesterId}
-      />
-    </ChatDependenciesProvider>
-  );
-}
-
-type ChatExperienceContentProps = {
-  requesterId: string;
-  setRequesterId: (requesterId: string) => void;
-};
-
-function ChatExperienceContent({
-  requesterId,
-  setRequesterId
-}: ChatExperienceContentProps) {
-  const { messages, isLoading, submitChatQuery } = useChat(requesterId);
+  const runtimeUrl = (() => {
+    try {
+      const url = new URL(endpoint);
+      return `${url.protocol}//${url.host}/api/copilotkit`;
+    } catch {
+      return "http://127.0.0.1:8000/api/copilotkit";
+    }
+  })();
 
   return (
     <section>
@@ -40,7 +27,7 @@ function ChatExperienceContent({
       <select
         id="requester-select"
         value={requesterId}
-        onChange={(event) => setRequesterId(event.target.value)}
+        onChange={(e) => setRequesterId(e.target.value)}
       >
         {CHAT_REQUESTERS.map((requester) => (
           <option key={requester.id} value={requester.id}>
@@ -49,11 +36,20 @@ function ChatExperienceContent({
         ))}
       </select>
 
-      <button type="button" onClick={() => void submitChatQuery(CHAT_VISIBLE_JOBS_QUERY)}>
-        Query visible jobs
-      </button>
-
-      <ChatWindow messages={messages} isLoading={isLoading} />
+      <CopilotKit
+        key={requesterId}
+        runtimeUrl={runtimeUrl}
+        headers={{ "X-Requester-Id": requesterId }}
+      >
+        <CopilotChat
+          instructions="You are a recruiting assistant. You can list open jobs, show candidates for a job (provide the job ID), find stalled candidates in screening, and summarize the candidate pipeline."
+          labels={{
+            title: "Recruiting Assistant",
+            initial:
+              "Hello! I can help with open jobs, candidates, stalled screening, and candidate summaries. What would you like to know?",
+          }}
+        />
+      </CopilotKit>
     </section>
   );
 }
